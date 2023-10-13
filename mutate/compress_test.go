@@ -46,6 +46,22 @@ func TestGzipCompressor(t *testing.T) {
 	assert.NoError(err)
 
 	assert.Equal(string(content), fact)
+
+	// with options
+	buf = bytes.NewBufferString(fact)
+	c = GzipCompressor.WithOpt(GzipBlockSize(256 << 12))
+
+	r, err = c.Compress(buf)
+	assert.NoError(err)
+	assert.Equal(c.MediaTypeSuffix(), "gzip")
+
+	r, err = gzip.NewReader(r)
+	assert.NoError(err)
+
+	content, err = ioutil.ReadAll(r)
+	assert.NoError(err)
+
+	assert.Equal(string(content), fact)
 }
 
 func TestZstdCompressor(t *testing.T) {
