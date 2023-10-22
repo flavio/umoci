@@ -116,7 +116,9 @@ yRAbACGEEEIIIYQQQgghhBBCCKEr+wTE0sQyACgAAA==`,
 
 	// Create the config.
 	config := ispec.Image{
-		OS: "linux",
+		Platform: ispec.Platform{
+			OS: "linux",
+		},
 		RootFS: ispec.RootFS{
 			Type:    "layers",
 			DiffIDs: layerDigests,

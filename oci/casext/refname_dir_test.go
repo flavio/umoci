@@ -131,10 +131,12 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) ([]descriptorMap, error) {
 		// Create our config and insert it.
 		created := time.Now()
 		configDigest, configSize, err := engineExt.PutBlobJSON(ctx, ispec.Image{
-			Created:      &created,
-			Author:       "Jane Author <janesmith@example.com>",
-			Architecture: runtime.GOARCH,
-			OS:           runtime.GOOS,
+			Created: &created,
+			Author:  "Jane Author <janesmith@example.com>",
+			Platform: ispec.Platform{
+				Architecture: runtime.GOARCH,
+				OS:           runtime.GOOS,
+			},
 			RootFS: ispec.RootFS{
 				Type: "unknown",
 			},

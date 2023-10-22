@@ -99,11 +99,13 @@ image.`,
 func toImage(config ispec.ImageConfig, meta mutate.Meta) ispec.Image {
 	created := meta.Created
 	return ispec.Image{
-		Config:       config,
-		Created:      &created,
-		Author:       meta.Author,
-		Architecture: meta.Architecture,
-		OS:           meta.OS,
+		Config:  config,
+		Created: &created,
+		Author:  meta.Author,
+		Platform: ispec.Platform{
+			Architecture: meta.Architecture,
+			OS:           meta.OS,
+		},
 	}
 }
 
