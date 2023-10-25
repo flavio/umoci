@@ -29,7 +29,7 @@ import (
 func Copy(dst io.Writer, src io.Reader) (int64, error) {
 	// Make a buffer so io.Copy doesn't make one for each iteration.
 	var buf []byte
-	size := 32 * 1024
+	size := 256 << 12 // 1 MiB
 	if lr, ok := src.(*io.LimitedReader); ok && lr.N < int64(size) {
 		if lr.N < 1 {
 			size = 1
