@@ -22,7 +22,14 @@ type Compressor interface {
 	// indicate what compression type is used, e.g. "gzip", or "" for no
 	// compression.
 	MediaTypeSuffix() string
+
+	// WithOpt applies an option and can be chained.
+	WithOpt(CompressorOpt) Compressor
 }
+
+// CompressorOpt is a compressor option which can be used to configure a
+// compressor.
+type CompressorOpt interface{}
 
 type noopCompressor struct{}
 
@@ -37,16 +44,24 @@ func (nc noopCompressor) MediaTypeSuffix() string {
 // NoopCompressor provides no compression.
 var NoopCompressor Compressor = noopCompressor{}
 
-// GzipCompressor provides gzip compression.
-var GzipCompressor Compressor = gzipCompressor{}
+func (nc noopCompressor) WithOpt(CompressorOpt) Compressor {
+	return nc
+}
 
-type gzipCompressor struct{}
+// GzipCompressor provides gzip compression.
+var GzipCompressor Compressor = gzipCompressor{blockSize: 256 << 10}
+
+type GzipBlockSize int
+
+type gzipCompressor struct {
+	blockSize int
+}
 
 func (gz gzipCompressor) Compress(reader io.Reader) (io.ReadCloser, error) {
 	pipeReader, pipeWriter := io.Pipe()
 
 	gzw := gzip.NewWriter(pipeWriter)
-	if err := gzw.SetConcurrency(256<<10, 2*runtime.NumCPU()); err != nil {
+	if err := gzw.SetConcurrency(gz.blockSize, 2*runtime.NumCPU()); err != nil {
 		return nil, errors.Wrapf(err, "set concurrency level to %v blocks", 2*runtime.NumCPU())
 	}
 	go func() {
@@ -74,6 +89,15 @@ func (gz gzipCompressor) Compress(reader io.Reader) (io.ReadCloser, error) {
 
 func (gz gzipCompressor) MediaTypeSuffix() string {
 	return "gzip"
+}
+
+func (gz gzipCompressor) WithOpt(opt CompressorOpt) Compressor {
+	switch val := opt.(type) {
+	case GzipBlockSize:
+		gz.blockSize = int(val)
+	}
+
+	return gz
 }
 
 // ZstdCompressor provides zstd compression.
@@ -113,4 +137,8 @@ func (zs zstdCompressor) Compress(reader io.Reader) (io.ReadCloser, error) {
 
 func (zs zstdCompressor) MediaTypeSuffix() string {
 	return "zstd"
+}
+
+func (zs zstdCompressor) WithOpt(CompressorOpt) Compressor {
+	return zs
 }
