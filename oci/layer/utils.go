@@ -26,6 +26,7 @@ import (
 
 	"github.com/apex/log"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/opencontainers/umoci/pkg/fseval"
 	"github.com/opencontainers/umoci/pkg/idtools"
 	rootlesscontainers "github.com/rootless-containers/proto/go-proto"
 	"golang.org/x/sys/unix"
@@ -213,7 +214,7 @@ func CleanPath(path string) string {
 
 // isOverlayWhiteout returns true if the FileInfo represents an overlayfs style
 // whiteout (i.e. mknod c 0 0) and false otherwise.
-func isOverlayWhiteout(info os.FileInfo) (bool, error) {
+func isOverlayWhiteout(info os.FileInfo, fullPath string, fsEval fseval.FsEval) (bool, error) {
 	var major, minor uint32
 	switch stat := info.Sys().(type) {
 	case *unix.Stat_t:
@@ -226,6 +227,25 @@ func isOverlayWhiteout(info os.FileInfo) (bool, error) {
 		return false, fmt.Errorf("[internal error] unknown stat info type %T", info.Sys())
 	}
 
-	return major == 0 && minor == 0 &&
-		info.Mode()&os.ModeCharDevice != 0, nil
+	if major == 0 && minor == 0 &&
+		info.Mode()&os.ModeCharDevice != 0 {
+		return true, nil
+	}
+
+	// also evaluate xattrs which may have opaque value set
+	attr, err := fsEval.Lgetxattr(fullPath, "user.overlay.opaque")
+	if err != nil {
+		v := errors.Cause(err)
+		if !errors.Is(err, os.ErrNotExist) && v != unix.EOPNOTSUPP && v != unix.ENODATA && v != unix.EPERM && v != unix.EACCES {
+			return false, errors.Errorf("[internal error] unknown stat info type %T", info.Sys())
+		}
+
+		return false, nil
+	}
+
+	if string(attr) == "y" {
+		return true, nil
+	}
+
+	return false, nil
 }
